@@ -1,0 +1,78 @@
+[project]
+name = "marine-ml-pipeline"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.10.8",
+    "pandas>=2.3.3",
+    "pyarrow>=22.0.0",
+    "scikit-learn>=1.8.0",
+]
+
+[dependency-groups]
+dev = [
+    "coverage>=7.13.0",
+    "poethepoet>=0.38.0",
+    "pytest>=9.0.2",
+    "ruff>=0.14.10",
+    "ty>=0.0.5",
+]
+
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/marine_ml"]
+
+
+
+# Ruff configuration
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+# Enable all rules, then ignore specific ones as needed
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "COM812", # missing trailing comma (conflicts with formatter)
+    "ISC001", # single line implicit string concatenation (conflicts with formatter)
+    "D203", # `incorrect-blank-line-before-class` (D203) and `no-blank-line-before-class` (D211) are incompatible
+    "D213", # `multi-line-summary-first-line` (D212) and `multi-line-summary-second-line` (D213) are incompatible
+]
+
+# Exclude directories
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Allow unused imports in __init__.py
+
+[tool.ruff.lint.extend-per-file-ignores]
+"tests/**.py" = ["D", "S101"]
+
+
+[tool.coverage.run]
+source = ["src/marine_ml"]
+omit = ["tests/*"]
+
+
+# Poethepoet tasks
+[tool.poe.tasks]
+# Ruff tasks
+lint = "uv run ruff check . --fix"
+format = "uv run ruff format ."
+lint-check = "uv run ruff check ."
+format-check = "uv run ruff format . --check"
+type-check = "uv run ty check ."
+
+[tool.poe.tasks.test]
+sequence = [
+    { shell = "uv run coverage run -m pytest . ./tests" },
+    { shell = "uv run coverage report -m" }
+]
+
+[tool.poe.tasks.all]
+sequence = ["format", "lint", "type-check", "test"]
