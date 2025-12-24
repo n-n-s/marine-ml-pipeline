@@ -9,6 +9,7 @@ from sklearn.model_selection import train_test_split
 
 from marine_ml.constants import DataColumns
 from marine_ml.data_loading import get_marine_data
+from marine_ml.preprocess import preprocess_data
 from marine_ml.utils import load_params
 
 logger = logging.getLogger(__name__)
@@ -16,11 +17,31 @@ logger = logging.getLogger(__name__)
 
 def get_dataset() -> tuple[pd.DataFrame, pd.Series]:
     """Get X, y data."""
-    _df = get_marine_data().dropna()
-    # Prepare features and target
-    feat_cols = _df.columns[_df.columns.str.contains("75")]  # Penzance buoy id
-    X = _df[feat_cols]
-    y = _df[f"{DataColumns.wave_height_sig.value};107"]  # Porthleven buoy id
+    params = load_params()
+
+    feature_buoy = 75  # Penzance buoy id
+    target_buoy = 107  # Porthleven buoy id
+
+    _df = get_marine_data()
+
+    # Feature engineering
+    feat_cols = _df.columns[_df.columns.str.contains(f";{feature_buoy}")]
+    df_feat = preprocess_data(
+        _df[feat_cols],
+        lags=params["data"]["lag_hours"],
+        window=params["data"]["rolling_window"],
+        columns=[f"{c};{feature_buoy}" for c in params["data"]["columns_to_lag_and_window"]],
+    )
+
+    # Target
+    target_col = f"{DataColumns.wave_height_sig.value};{target_buoy}"
+    target = _df[[target_col]]
+
+    df_all = pd.concat([df_feat, target], axis=1).dropna()
+
+    X = df_all[df_feat.columns]
+    y = df_all[target_col]
+
     return X, y
 
 
