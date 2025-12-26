@@ -6,6 +6,8 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "matplotlib>=3.10.8",
+    "mlflow>=3.8.1",
+    "optuna>=4.6.0",
     "pandas>=2.3.3",
     "pyarrow>=22.0.0",
     "scikit-learn>=1.8.0",
@@ -54,6 +56,9 @@ ignore = [
 [tool.ruff.lint.extend-per-file-ignores]
 "tests/**.py" = ["D", "S101"]
 
+[tool.ty.rules]
+possibly-missing-attribute = "ignore"
+
 
 [tool.coverage.run]
 source = ["src/marine_ml"]
@@ -77,6 +82,10 @@ sequence = [
 
 [tool.poe.tasks.jupy]
 shell = "uv run python -m jupyter lab"
+
+[tool.poe.tasks.mlflow]
+help = "Start MLflow UI with local file-based storage"
+shell = "uv run mlflow ui"
 
 [tool.poe.tasks.all]
 sequence = ["format", "lint", "type-check", "test"]

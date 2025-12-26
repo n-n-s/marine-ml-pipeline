@@ -3,12 +3,11 @@ data:
   test_size: 0.2
   random_state: 42
   # Feature engineering
-  lag_hours: [1, 3, 6]  # Use conditions from 1h, 3h, 6h ago
+  lag_hours: [1, 3, 6, 12]
   rolling_window: 6     # Hours for rolling statistics
   columns_to_lag_and_window: ['wave_height_significant_m', 'wave_direction_deg']
 
 model:
-  algorithm: random_forest
   n_estimators: 100
   max_depth: 5
   random_state: 42
