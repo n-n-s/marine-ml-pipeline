@@ -60,7 +60,7 @@ def split_data(X: pd.DataFrame, y: pd.Series) -> tuple[pd.DataFrame, pd.DataFram
 
 
 def create_model() -> RandomForestRegressor:
-    """Define ml model."""
+    """Define ml model without optuna."""
     params = load_params()
     return RandomForestRegressor(
         n_estimators=params["model"]["n_estimators"],

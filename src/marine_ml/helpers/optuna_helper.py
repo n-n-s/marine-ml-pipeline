@@ -1,18 +1,24 @@
 """Helper functions for Optuna studies."""
-
 # ruff: noqa: N803
+
+import json
 import logging
+import pickle
+from collections.abc import Callable
 from functools import partial
 
 import mlflow
 import optuna
 import pandas as pd
+from mlflow.models.signature import infer_signature
 from optuna.study import Study
 from optuna.trial import FrozenTrial, Trial
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 
+from marine_ml.constants import PROJECT_ROOT_DIR
 from marine_ml.plots import evaluation_plots
+from marine_ml.utils import load_params
 
 optuna.logging.set_verbosity(optuna.logging.ERROR)  # override Optuna's default logging to reduce verbosity
 
@@ -45,36 +51,40 @@ def champion_callback(study: Study, frozen_trial: FrozenTrial) -> None:
             logger.info(msg)
 
 
-def objective(
-    trial: Trial, *, X_train: pd.DataFrame, y_train: pd.Series, X_test: pd.DataFrame, y_test: pd.Series
-) -> float:
-    """Optuna objective function."""
-    with mlflow.start_run(nested=True):
-        params = {
-            "n_estimators": trial.suggest_int("n_estimators", 50, 500),
-            "max_depth": trial.suggest_int("max_depth", 3, 20),
-            "min_samples_split": trial.suggest_int("min_samples_split", 2, 20),
-            "min_samples_leaf": trial.suggest_int("min_samples_leaf", 1, 10),
-            "max_features": trial.suggest_categorical("max_features", ["sqrt", "log2", None]),
-            "bootstrap": trial.suggest_categorical("bootstrap", [True, False]),
-        }
+def create_objective(
+    *, X_train: pd.DataFrame, y_train: pd.Series, X_test: pd.DataFrame, y_test: pd.Series, params: dict
+) -> Callable:
+    """Define Optuna objective function."""
+    optuna_params = params["training"]["optuna_params"]
 
-        bst = RandomForestRegressor(
-            **params,
-            n_jobs=-1,
-            random_state=42,
-        )
-        bst.fit(X=X_train, y=y_train)
-        preds = bst.predict(X_test)
-        error = mean_absolute_error(y_test, preds)
+    def objective(trial: Trial) -> float:
+        """Optuna objective function."""
+        trial_params = {}
+        for param_name, param_config in optuna_params.items():
+            if param_config["type"] == "int":
+                trial_params[param_name] = trial.suggest_int(param_name, param_config["low"], param_config["high"])
+            elif param_config["type"] == "float":
+                trial_params[param_name] = trial.suggest_float(param_name, param_config["low"], param_config["high"])
 
-        mlflow.log_params(params)
-        mlflow.log_metric("mae", error)
+        with mlflow.start_run(nested=True):
+            model = RandomForestRegressor(
+                **trial_params,
+                n_jobs=-1,
+                random_state=params["model"]["random_state"],
+            )
+            model.fit(X=X_train, y=y_train)
+            preds = model.predict(X_test)
+            error = mean_absolute_error(y_test, preds)
 
-    return error
+            mlflow.log_params(trial_params)
+            mlflow.log_metric("mae", error)
+
+        return error
+
+    return objective
 
 
-def run_optuna_rf(  # noqa: PLR0913
+def train_with_optuna_rf(  # noqa: PLR0913
     *,
     X_train: pd.DataFrame,
     y_train: pd.Series,
@@ -82,7 +92,7 @@ def run_optuna_rf(  # noqa: PLR0913
     y_test: pd.Series,
     experiment_id: str,
     run_name: str,
-    n_trials: int = 10,
+    show_plots: bool = True,
 ) -> str:
     """Run Optuna study to optimise model, logging to MLflow.
 
@@ -92,16 +102,21 @@ def run_optuna_rf(  # noqa: PLR0913
     :param y_test:
     :param experiment_id: MLflow experiment ID
     :param run_name: MLflow run name
-    :param n_trials: Optuna n_trials
     :return: MLflow model_uri
     """
+    params = load_params()
+    n_trials = params["training"]["n_trials"]
+
     with mlflow.start_run(experiment_id=experiment_id, run_name=run_name, nested=True):
-        study = optuna.create_study(direction="minimize")
+        logger.info("Hyperparameter optimsation with Optuna")
+        study = optuna.create_study(direction="minimize", study_name="wave-height-optimisation")
 
         # Create a partial function with the data pre-filled
-        objective_with_data = partial(objective, X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test)
+        objective_with_data = partial(
+            create_objective(X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test, params=params)
+        )
 
-        study.optimize(objective_with_data, n_trials=n_trials, callbacks=[champion_callback])
+        study.optimize(objective_with_data, n_trials=n_trials, callbacks=[champion_callback], show_progress_bar=True)
 
         mlflow.log_params(study.best_params)
         mlflow.log_metric("best_mae", study.best_value)
@@ -119,11 +134,22 @@ def run_optuna_rf(  # noqa: PLR0913
         model = RandomForestRegressor(**study.best_params, n_jobs=-1)
         model.fit(X_train, y_train)
 
-        artifact_path = "model"
+        logger.info("Evaluating model")
+        y_pred_train = model.predict(X_train)
+        y_pred_test = model.predict(X_test)
+        train_mae = mean_absolute_error(y_train, y_pred_train)
+        test_mae = mean_absolute_error(y_test, y_pred_test)
+        train_r2 = r2_score(y_train, y_pred_train)
+        test_r2 = r2_score(y_test, y_pred_test)
+        mlflow.log_metrics({"train_mae": train_mae, "test_mae": test_mae, "train_r2": train_r2, "test_r2": test_r2})
+
+        model_name = "model-pz-to-lev"
         mlflow.sklearn.log_model(
             sk_model=model,
-            name=artifact_path,
+            name=model_name,
             metadata={"model_data_version": 1},
+            registered_model_name=model_name,
+            signature=infer_signature(X_train, y_train),
         )
 
         # Visualisation
@@ -132,8 +158,37 @@ def run_optuna_rf(  # noqa: PLR0913
         ).sort_values("importance", ascending=False)
         y_pred = model.predict(X_test)
         fig = evaluation_plots(
-            y_test=y_test, y_pred=y_pred, test_r2=r2_score(y_test, y_pred), feature_importance=feature_importance
+            y_test=y_test,
+            y_pred=y_pred,
+            test_r2=r2_score(y_test, y_pred),
+            feature_importance=feature_importance,
+            show=show_plots,
         )
         mlflow.log_figure(figure=fig, artifact_file="evaluation_plots.png")
 
-        return mlflow.get_artifact_uri(artifact_path)
+        # Get the run and register model to "Production" stage
+        client = mlflow.tracking.MlflowClient()
+        # Find the latest model version
+        model_versions = client.search_model_versions(f"name='{model_name}'")
+        latest_version = str(max([int(mv.version) for mv in model_versions]))
+        # Transition to Production stage
+        client.transition_model_version_stage(
+            name=model_name,
+            version=latest_version,
+            stage="Production",
+            archive_existing_versions=True,  # Archive old production models
+        )
+
+        logger.info("Model registered as '%s' version %s", model_name, latest_version)
+        logger.info("Promoted to 'Production' stage.")
+
+        # Also save locally as backup
+        local_model_output = PROJECT_ROOT_DIR / "models"
+        local_model_output.mkdir(exist_ok=True, parents=True)
+
+        with (local_model_output / "model.pkl").open("wb") as f:
+            pickle.dump(model, f)
+        with (local_model_output / "feature_names.json").open("w") as f:
+            json.dump(X_train.columns.tolist(), f, indent=4)  # ty: ignore[invalid-argument-type]
+
+        return mlflow.get_artifact_uri(model_name)
