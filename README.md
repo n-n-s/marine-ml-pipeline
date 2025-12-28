@@ -1,6 +1,8 @@
 # marine-ml-pipeline
 ML pipeline for wave data
 
+[![Test](https://github.com/n-n-s/marine-ml-pipeline/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/n-n-s/marine-ml-pipeline/actions/workflows/ci.yaml)
+
 ## Simple ML Model
 Defines a simple regression model to predict the wave height of one buoy based on the data from another.
 
