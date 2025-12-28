@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi[standard]>=0.127.1",
     "matplotlib>=3.10.8",
     "mlflow>=3.8.1",
     "optuna>=4.6.0",
@@ -86,6 +87,10 @@ shell = "uv run python -m jupyter lab"
 [tool.poe.tasks.mlflow]
 help = "Start MLflow UI with local file-based storage"
 shell = "uv run mlflow ui"
+
+[tool.poe.tasks.serve]
+help = "Serve model via FastAPI"
+shell = "uv run python src/marine_ml/serve.py"
 
 [tool.poe.tasks.all]
 sequence = ["format", "lint", "type-check", "test"]
