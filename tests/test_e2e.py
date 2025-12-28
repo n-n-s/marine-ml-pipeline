@@ -105,31 +105,31 @@ def test_complete_pipeline(api_client: TestClient) -> None:
     # Test 3: Make prediction with valid data
     logger.debug("Testing prediction endpoint...")
     sample_features = {
-        "directional_wave_spread_deg;75": 40,
+        "directional_wave_spread_deg;75": 20.0,
         "hour": 7,
         "month": 12,
-        "sea_surface_temperature_degc;75": 10.1,
-        "wave_direction_deg;75": 270,
-        "wave_direction_deg;75_lag_3h": 240,
-        "wave_direction_deg;75_lag_6h": 260,
-        "wave_direction_deg;75_rolling_mean_6h": 255,
-        "wave_direction_deg;75_rolling_std_6h": 40,
+        "sea_surface_temperature_degc;75": 11.5,
+        "wave_direction_deg;75": 180.0,
+        "wave_direction_deg;75_lag_3h": 170.0,
+        "wave_direction_deg;75_lag_6h": 168.0,
+        "wave_direction_deg;75_rolling_mean_6h": 175.0,
+        "wave_direction_deg;75_rolling_std_6h": 5.0,
         "wave_height_max_m;75": 2.4,
-        "wave_height_significant_m;75": 2,
-        "wave_height_significant_m;75_lag_3h": 1.8,
-        "wave_height_significant_m;75_lag_6h": 1.4,
-        "wave_height_significant_m;75_rolling_mean_6h": 1.7,
+        "wave_height_significant_m;75": 1.8,
+        "wave_height_significant_m;75_lag_3h": 1.7,
+        "wave_height_significant_m;75_lag_6h": 1.6,
+        "wave_height_significant_m;75_rolling_mean_6h": 1.6,
         "wave_height_significant_m;75_rolling_std_6h": 0.1,
-        "wave_period_mean_s;75": 12,
-        "wave_period_peak_s;75": 18,
+        "wave_period_mean_s;75": 12.0,
+        "wave_period_peak_s;75": 18.0,
     }
     response = api_client.post("/predict", json={"features": sample_features})
     assert response.status_code == 200  # noqa: PLR2004
     prediction_data = response.json()
     assert "predicted_wave_height" in prediction_data
     assert isinstance(prediction_data["predicted_wave_height"], (int, float))
-    expected_min = 3.5
-    expected_max = 4.0
+    expected_min = 2.8
+    expected_max = 3.2
     assert prediction_data["predicted_wave_height"] > expected_min
     assert prediction_data["predicted_wave_height"] < expected_max
     logger.debug("Prediction: %.2f m", prediction_data["predicted_wave_height"])

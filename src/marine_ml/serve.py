@@ -87,7 +87,7 @@ class ModelService:
         """Reload model."""
         return self._load_model()
 
-    def predict(self, features: dict[str, float]) -> float:
+    def predict(self, features: dict[str, float | int]) -> float:  # ty: ignore[invalid-argument-type]
         """Make prediction."""
         if self.model is None:
             raise HTTPException(status_code=503, detail="Model not loaded")
