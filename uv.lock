@@ -677,6 +677,18 @@ wheels = [
 ]
 
 [[package]]
+name = "exploration"
+version = "0.7.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "networkx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6a/6d/dead232679731051c86ee12fb74729a07e54d348f77c9c3168c23da1ce48/exploration-0.7.5.tar.gz", hash = "sha256:fe482ab6ec2f67771eeddd613ab5128020ca924414e7e8c45a8f39ef66962d6c", size = 326514 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9c/4e/507ee7f16b8e1d2087865dfe968ab6757a441b34e5f081e797c7f5948a83/exploration-0.7.5-py3-none-any.whl", hash = "sha256:cc8de536ce8e602edba9bc3845c4784ba53719338c701fddb0fdcabf2e6abcb6", size = 329267 },
+]
+
+[[package]]
 name = "fastapi"
 version = "0.127.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1558,10 +1570,18 @@ dependencies = [
     { name = "scikit-learn" },
 ]
 
+[package.optional-dependencies]
+all = [
+    { name = "exploration" },
+]
+exploration = [
+    { name = "jupyterlab" },
+    { name = "windrose" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "coverage" },
-    { name = "jupyterlab" },
     { name = "poethepoet" },
     { name = "pytest" },
     { name = "ruff" },
@@ -1570,19 +1590,21 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "exploration", marker = "extra == 'all'" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.127.1" },
+    { name = "jupyterlab", marker = "extra == 'exploration'", specifier = ">=4.5.1" },
     { name = "matplotlib", specifier = ">=3.10.8" },
     { name = "mlflow", specifier = ">=3.8.1" },
     { name = "optuna", specifier = ">=4.6.0" },
     { name = "pandas", specifier = ">=2.3.3" },
     { name = "pyarrow", specifier = ">=22.0.0" },
     { name = "scikit-learn", specifier = ">=1.8.0" },
+    { name = "windrose", marker = "extra == 'exploration'", specifier = ">=1.9.2" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "coverage", specifier = ">=7.13.0" },
-    { name = "jupyterlab", specifier = ">=4.5.1" },
     { name = "poethepoet", specifier = ">=0.38.0" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "ruff", specifier = ">=0.14.10" },
@@ -1888,6 +1910,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/83/f8/51569ac65d696c8ecbee95938f89d4abf00f47d58d48f6fbabfe8f0baefe/nest_asyncio-1.6.0.tar.gz", hash = "sha256:6f172d5449aca15afd6c646851f4e31e02c598d553a667e38cafa997cfec55fe", size = 7418 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a0/c4/c2971a3ba4c6103a3d10c4b0f24f461ddc027f0f09763220cf35ca1401b3/nest_asyncio-1.6.0-py3-none-any.whl", hash = "sha256:87af6efd6b5e897c81050477ef65c62e2b2f35d51703cae01aff2905b1852e1c", size = 5195 },
+]
+
+[[package]]
+name = "networkx"
+version = "3.6.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6a/51/63fe664f3908c97be9d2e4f1158eb633317598cfa6e1fc14af5383f17512/networkx-3.6.1.tar.gz", hash = "sha256:26b7c357accc0c8cde558ad486283728b65b6a95d85ee1cd66bafab4c8168509", size = 2517025 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9e/c9/b2622292ea83fbb4ec318f5b9ab867d0a28ab43c5717bb85b0a5f6b3b0a4/networkx-3.6.1-py3-none-any.whl", hash = "sha256:d47fbf302e7d9cbbb9e2555a0d267983d2aa476bac30e90dfbe5669bd57f3762", size = 2068504 },
 ]
 
 [[package]]
@@ -3599,6 +3630,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/45/ea/b0f8eeb287f8df9066e56e831c7824ac6bab645dd6c7a8f4b2d767944f9b/werkzeug-3.1.4.tar.gz", hash = "sha256:cd3cd98b1b92dc3b7b3995038826c68097dcb16f9baa63abe35f20eafeb9fe5e", size = 864687 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2f/f9/9e082990c2585c744734f85bec79b5dae5df9c974ffee58fe421652c8e91/werkzeug-3.1.4-py3-none-any.whl", hash = "sha256:2ad50fb9ed09cc3af22c54698351027ace879a0b60a3b5edf5730b2f7d876905", size = 224960 },
+]
+
+[[package]]
+name = "windrose"
+version = "1.9.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "matplotlib" },
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a5/9e/94a43a5bbbb59373e2f9c63a143cd89dafd5414c3658658f85809e7a1a83/windrose-1.9.2.tar.gz", hash = "sha256:70200afe01721bfe4a10ea26cbcc3e5c23800566921bbb8a34b0f68ade488bfa", size = 25327 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fb/5e/c27fbd92d635d5ee4789cb91b82e475a59a0dc86eb8a279e3397d4cc8d54/windrose-1.9.2-py3-none-any.whl", hash = "sha256:0f93d22233b281929dff9621366121622a02dd7b7f345e16a869e9947b9559fd", size = 20314 },
 ]
 
 [[package]]

@@ -17,12 +17,16 @@ dependencies = [
 [dependency-groups]
 dev = [
     "coverage>=7.13.0",
-    "jupyterlab>=4.5.1",
     "poethepoet>=0.38.0",
     "pytest>=9.0.2",
     "ruff>=0.14.10",
     "ty>=0.0.5",
 ]
+
+[project.optional-dependencies]
+exploration = ["windrose>=1.9.2", "jupyterlab>=4.5.1"]
+
+all = ["exploration"]
 
 
 [build-system]
@@ -56,6 +60,7 @@ ignore = [
 
 [tool.ruff.lint.extend-per-file-ignores]
 "tests/**.py" = ["D", "S101"]
+"*.ipynb" = ["T201", "S301"]
 
 [tool.ty.rules]
 possibly-missing-attribute = "ignore"
