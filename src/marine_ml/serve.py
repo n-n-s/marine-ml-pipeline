@@ -7,6 +7,7 @@ import pickle
 
 import mlflow
 import mlflow.pyfunc
+import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -30,12 +31,14 @@ class ModelService:
         self.feature_names = None
         self._load_model()
 
-    def _load_model(self) -> None:
+    def _load_model(self) -> bool:
         """Load model from MLflow Registry or local file."""
         if not self._load_from_registry():
             logger.info("Falling back to local model file...")
             if not self._load_from_file():
-                logger.warning("Could not load model from MLflow or file!")
+                logger.warning("Could not load model from MLflow or file")
+                return False
+        return True
 
     def _load_from_registry(self) -> bool:
         """Load model from MLflow Model Registry."""
@@ -80,7 +83,7 @@ class ModelService:
         else:
             return True
 
-    def reload(self) -> None:
+    def reload(self) -> bool:
         """Reload model."""
         return self._load_model()
 
@@ -205,6 +208,10 @@ def get_features() -> dict[str, list[str]]:
 def predict(input_data: PredictionInput) -> PredictionOutput:
     """Predict wave height."""
     try:
+        # Ensure month & hour are required dtype for MLflow
+        for int_feat in ["month", "hour"]:
+            if not isinstance(input_data.features[int_feat], np.int32):
+                input_data.features[int_feat] = np.int32(input_data.features[int_feat])  # ty: ignore[invalid-assignment]
         prediction = model_service.predict(input_data.features)
         version_info = model_service.version_info
 

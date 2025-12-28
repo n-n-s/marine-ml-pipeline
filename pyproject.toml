@@ -61,6 +61,12 @@ ignore = [
 possibly-missing-attribute = "ignore"
 
 
+[tool.pytest.ini_options]
+# Set logging level for pytest's internal logging
+log_cli = true
+log_cli_level = "INFO"
+
+
 [tool.coverage.run]
 source = ["src/marine_ml"]
 omit = ["tests/*"]
@@ -79,6 +85,12 @@ type-check = "uv run ty check ."
 sequence = [
     { shell = "uv run coverage run -m pytest . ./tests" },
     { shell = "uv run coverage report -m" }
+]
+
+[tool.poe.tasks.cov]
+sequence = [
+    { shell = "coverage html" },
+    { shell = "open htmlcov/index.html" }
 ]
 
 [tool.poe.tasks.jupy]
@@ -112,7 +124,6 @@ shell = "tail -f mlflow.log"
 [tool.poe.tasks.run]
 help = "Run all components"
 sequence = ["mlflow-start", "preprocess", "train", "serve"]
-
 
 [tool.poe.tasks.all]
 sequence = ["format", "lint", "type-check", "test"]
