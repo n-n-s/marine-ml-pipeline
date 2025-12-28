@@ -7,10 +7,12 @@ Defines a simple regression model to predict the wave height of one buoy based o
 > [!NOTE]
 > The model is essentially a placeholder, to facilitate the ML pipeline build.
 
-## Run
+## Running the Pipeline
+
+### Manual Execution (for development)
 
 1. Activate virtual env, e.g. `./.venv/bin/activate`
-2. Start mlflow: `uv run poe mlflow`
-3. Start jupyter lab: `uv run poe jupy` and open and run `optuna.ipynb`
-4. View model details in mlflow at http://localhost:5000
-5. Serve the model via FastAPI by running `uv run poe serve` and navigate to http://localhost:8000/docs
+2. `uv run poe run`
+3. Navigate to http://localhost:8000/docs and try out the `/predict` endpoint
+4. Stop serving the API in the terminal (ctrl+c)
+5. Stop mlflow: `uv run poe mlflow-stop`

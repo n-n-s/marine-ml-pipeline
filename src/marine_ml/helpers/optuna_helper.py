@@ -17,6 +17,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 
 from marine_ml.constants import PROJECT_ROOT_DIR
+from marine_ml.helpers.mlflow_helper import MLFlowHelper
 from marine_ml.plots import evaluation_plots
 from marine_ml.utils import load_params
 
@@ -84,14 +85,12 @@ def create_objective(
     return objective
 
 
-def train_with_optuna_rf(  # noqa: PLR0913
+def train_with_optuna_rf(
     *,
     X_train: pd.DataFrame,
     y_train: pd.Series,
     X_test: pd.DataFrame,
     y_test: pd.Series,
-    experiment_id: str,
-    run_name: str,
     show_plots: bool = True,
 ) -> str:
     """Run Optuna study to optimise model, logging to MLflow.
@@ -104,6 +103,10 @@ def train_with_optuna_rf(  # noqa: PLR0913
     :param run_name: MLflow run name
     :return: MLflow model_uri
     """
+    mlflow.set_tracking_uri("http://localhost:5000")
+    experiment_id = MLFlowHelper.get_or_create_experiment(experiment_name="pz_predict_lev")
+    run_name = "pz_predict_lev_run"
+
     params = load_params()
     n_trials = params["training"]["n_trials"]
 

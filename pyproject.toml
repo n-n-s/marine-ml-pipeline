@@ -92,5 +92,27 @@ shell = "uv run mlflow ui"
 help = "Serve model via FastAPI"
 shell = "uv run python src/marine_ml/serve.py"
 
+[tool.poe.tasks.preprocess]
+help = "Run preprocessing"
+shell = "uv run python src/marine_ml/prepare_data.py"
+
+[tool.poe.tasks.train]
+help = "Run training script"
+shell = "uv run python src/marine_ml/train.py"
+
+[tool.poe.tasks.mlflow-start]
+shell = "nohup uv run mlflow ui > mlflow.log 2>&1 &"
+
+[tool.poe.tasks.mlflow-stop]
+shell = "pkill -f 'mlflow ui'"
+
+[tool.poe.tasks.mlflow-logs]
+shell = "tail -f mlflow.log"
+
+[tool.poe.tasks.run]
+help = "Run all components"
+sequence = ["mlflow-start", "preprocess", "train", "serve"]
+
+
 [tool.poe.tasks.all]
 sequence = ["format", "lint", "type-check", "test"]

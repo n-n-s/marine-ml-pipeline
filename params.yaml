@@ -8,8 +8,6 @@ data:
   columns_to_lag_and_window: ['wave_height_significant_m', 'wave_direction_deg']
 
 model:
-  n_estimators: 100  # Used in simple create_model (not optuna)
-  max_depth: 5  # Used in simple create_model (not optuna)
   random_state: 42
 
 training:
