@@ -5,7 +5,10 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi[standard]>=0.127.1",
     "matplotlib>=3.10.8",
+    "mlflow>=3.8.1",
+    "optuna>=4.6.0",
     "pandas>=2.3.3",
     "pyarrow>=22.0.0",
     "scikit-learn>=1.8.0",
@@ -14,6 +17,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "coverage>=7.13.0",
+    "jupyterlab>=4.5.1",
     "poethepoet>=0.38.0",
     "pytest>=9.0.2",
     "ruff>=0.14.10",
@@ -53,6 +57,14 @@ ignore = [
 [tool.ruff.lint.extend-per-file-ignores]
 "tests/**.py" = ["D", "S101"]
 
+[tool.ty.rules]
+possibly-missing-attribute = "ignore"
+
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "INFO"
+
 
 [tool.coverage.run]
 source = ["src/marine_ml"]
@@ -68,11 +80,49 @@ lint-check = "uv run ruff check ."
 format-check = "uv run ruff format . --check"
 type-check = "uv run ty check ."
 
-[tool.poe.tasks.test]
+[tool.poe.tasks.cov]
+sequence = [
+    { shell = "coverage html" },
+    { shell = "open htmlcov/index.html" }
+]
+
+[tool.poe.tasks.jupy]
+shell = "uv run python -m jupyter lab"
+
+[tool.poe.tasks.serve]
+help = "Serve model via FastAPI"
+shell = "uv run python src/marine_ml/serve.py"
+
+[tool.poe.tasks.preprocess]
+help = "Run preprocessing"
+shell = "uv run python src/marine_ml/prepare_data.py"
+
+[tool.poe.tasks.train]
+help = "Run training script"
+shell = "uv run python src/marine_ml/train.py"
+
+[tool.poe.tasks.mlflow-start]
+shell = "nohup uv run mlflow ui > mlflow.log 2>&1 &"
+
+[tool.poe.tasks.mlflow-stop]
+shell = "pkill -f 'mlflow'"
+
+[tool.poe.tasks.mlflow-logs]
+shell = "tail -f mlflow.log"
+
+
+[tool.poe.tasks.call-tests-run]
 sequence = [
     { shell = "uv run coverage run -m pytest . ./tests" },
     { shell = "uv run coverage report -m" }
 ]
+
+[tool.poe.tasks.test]
+sequence = ["mlflow-start", "call-tests-run", "mlflow-stop"]
+
+[tool.poe.tasks.run]
+help = "Run all components"
+sequence = ["mlflow-start", "preprocess", "train", "serve"]
 
 [tool.poe.tasks.all]
 sequence = ["format", "lint", "type-check", "test"]

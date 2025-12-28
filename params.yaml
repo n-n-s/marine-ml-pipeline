@@ -1,9 +1,31 @@
 data:
+  # Train/Test split
   test_size: 0.2
   random_state: 42
+  # Feature engineering
+  lag_hours: [3, 6]
+  rolling_window: 6
+  columns_to_lag_and_window: ['wave_height_significant_m', 'wave_direction_deg']
 
 model:
-  algorithm: random_forest
-  n_estimators: 100
-  max_depth: 5
   random_state: 42
+
+training:
+  n_trials: 20
+  optuna_params:
+    n_estimators:
+      type: int
+      low: 50
+      high: 200
+    max_depth:
+      type: int
+      low: 5
+      high: 20
+    min_samples_split:
+      type: int
+      low: 2
+      high: 10
+    min_samples_leaf:
+      type: int
+      low: 1
+      high: 10
