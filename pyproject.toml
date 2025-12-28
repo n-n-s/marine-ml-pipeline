@@ -62,7 +62,6 @@ possibly-missing-attribute = "ignore"
 
 
 [tool.pytest.ini_options]
-# Set logging level for pytest's internal logging
 log_cli = true
 log_cli_level = "INFO"
 
@@ -81,12 +80,6 @@ lint-check = "uv run ruff check ."
 format-check = "uv run ruff format . --check"
 type-check = "uv run ty check ."
 
-[tool.poe.tasks.test]
-sequence = [
-    { shell = "uv run coverage run -m pytest . ./tests" },
-    { shell = "uv run coverage report -m" }
-]
-
 [tool.poe.tasks.cov]
 sequence = [
     { shell = "coverage html" },
@@ -95,10 +88,6 @@ sequence = [
 
 [tool.poe.tasks.jupy]
 shell = "uv run python -m jupyter lab"
-
-[tool.poe.tasks.mlflow]
-help = "Start MLflow UI with local file-based storage"
-shell = "uv run mlflow ui"
 
 [tool.poe.tasks.serve]
 help = "Serve model via FastAPI"
@@ -116,10 +105,20 @@ shell = "uv run python src/marine_ml/train.py"
 shell = "nohup uv run mlflow ui > mlflow.log 2>&1 &"
 
 [tool.poe.tasks.mlflow-stop]
-shell = "pkill -f 'mlflow ui'"
+shell = "pkill -f 'mlflow'"
 
 [tool.poe.tasks.mlflow-logs]
 shell = "tail -f mlflow.log"
+
+
+[tool.poe.tasks.call-tests-run]
+sequence = [
+    { shell = "uv run coverage run -m pytest . ./tests" },
+    { shell = "uv run coverage report -m" }
+]
+
+[tool.poe.tasks.test]
+sequence = ["mlflow-start", "call-tests-run", "mlflow-stop"]
 
 [tool.poe.tasks.run]
 help = "Run all components"

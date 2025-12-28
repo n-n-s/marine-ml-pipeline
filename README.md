@@ -9,7 +9,7 @@ Defines a simple regression model to predict the wave height of one buoy based o
 
 ## Running the Pipeline
 
-### Manual Execution (for development)
+### Manual Execution
 
 1. Activate virtual env, e.g. `./.venv/bin/activate`
 2. `uv run poe run`
