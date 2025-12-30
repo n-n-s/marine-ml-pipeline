@@ -5,7 +5,7 @@ import json
 import logging
 import pickle
 from collections.abc import Callable
-from functools import partial
+from typing import Literal
 
 import mlflow
 import optuna
@@ -13,7 +13,7 @@ import pandas as pd
 from mlflow.models.signature import infer_signature
 from optuna.study import Study
 from optuna.trial import FrozenTrial, Trial
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import HistGradientBoostingRegressor, RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 
 from marine_ml.constants import PROJECT_ROOT_DIR
@@ -52,11 +52,39 @@ def champion_callback(study: Study, frozen_trial: FrozenTrial) -> None:
             logger.info(msg)
 
 
-def create_objective(
-    *, X_train: pd.DataFrame, y_train: pd.Series, X_test: pd.DataFrame, y_test: pd.Series, params: dict
+def create_model(
+    active_model: Literal["random_forest", "hist_gradient_boosting"], model_params: dict, random_state: int
+) -> RandomForestRegressor | HistGradientBoostingRegressor:
+    """Construct sklearn model from config.
+
+    :param active_model: string of model name
+    :param model_params: e.g. n_estimators, max_depth, etc.
+    :param random_state: e.g. 42
+    :return: sklearn model
+
+    """
+    if active_model == "random_forest":
+        return RandomForestRegressor(**model_params, random_state=random_state)
+    if active_model == "hist_gradient_boosting":
+        return HistGradientBoostingRegressor(**model_params, random_state=random_state)
+    msg = f"Unsupported model '{active_model}'"
+    raise ValueError(msg)
+
+
+def create_objective(  # noqa: PLR0913
+    *,
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    X_test: pd.DataFrame,
+    y_test: pd.Series,
+    params: dict,
+    parent_run_id: str,
 ) -> Callable:
     """Define Optuna objective function."""
-    optuna_params = params["training"]["optuna_params"]
+    active_model = params["training"]["active_model"]
+    model_config = params["models"][active_model]
+    random_state = model_config["random_state"]
+    optuna_params = model_config["optuna_params"]
 
     def objective(trial: Trial) -> float:
         """Optuna objective function."""
@@ -65,27 +93,41 @@ def create_objective(
             if param_config["type"] == "int":
                 trial_params[param_name] = trial.suggest_int(param_name, param_config["low"], param_config["high"])
             elif param_config["type"] == "float":
-                trial_params[param_name] = trial.suggest_float(param_name, param_config["low"], param_config["high"])
+                trial_params[param_name] = trial.suggest_float(
+                    param_name, param_config["low"], param_config["high"], log=param_config.get("log", False)
+                )
+            elif param_config["type"] == "categorical":
+                trial_params[param_name] = trial.suggest_categorical(param_name, param_config["choices"])
 
-        with mlflow.start_run(nested=True):
-            model = RandomForestRegressor(
-                **trial_params,
-                n_jobs=-1,
-                random_state=params["model"]["random_state"],
-            )
+        # Use client API to create nested run explicitly
+        client = mlflow.tracking.MlflowClient()
+        nested_run = client.create_run(
+            experiment_id=client.get_run(parent_run_id).info.experiment_id,
+            run_name=f"trial_{trial.number}",
+            tags={"mlflow.parentRunId": parent_run_id},
+        )
+
+        with mlflow.start_run(run_id=nested_run.info.run_id, run_name=f"trial_{trial.number}"):
+            model = create_model(active_model=active_model, model_params=trial_params, random_state=random_state)
             model.fit(X=X_train, y=y_train)
             preds = model.predict(X_test)
             error = mean_absolute_error(y_test, preds)
+            r2 = r2_score(y_test, preds)
 
             mlflow.log_params(trial_params)
             mlflow.log_metric("mae", error)
+            mlflow.log_metric("r2", r2)
+
+        # Also log to parent run for epoch-style view
+        client.log_metric(parent_run_id, "trial_mae", error, step=trial.number)
+        client.log_metric(parent_run_id, "trial_r2", r2, step=trial.number)
 
         return error
 
     return objective
 
 
-def train_with_optuna_rf(
+def train_with_optuna(  # noqa: PLR0915
     *,
     X_train: pd.DataFrame,
     y_train: pd.Series,
@@ -95,32 +137,36 @@ def train_with_optuna_rf(
 ) -> str:
     """Run Optuna study to optimise model, logging to MLflow.
 
-    :param X_train:
-    :param y_train:
-    :param X_test:
-    :param y_test:
-    :param experiment_id: MLflow experiment ID
-    :param run_name: MLflow run name
     :return: MLflow model_uri
     """
-    mlflow.set_tracking_uri("http://localhost:5000")
-    experiment_id = MLFlowHelper.get_or_create_experiment(experiment_name="pz_predict_lev")
-    run_name = "pz_predict_lev_run"
-
     params = load_params()
     n_trials = params["training"]["n_trials"]
+    active_model = params["training"]["active_model"]
+    model_config = params["models"][active_model]
+    random_state = model_config["random_state"]
 
-    with mlflow.start_run(experiment_id=experiment_id, run_name=run_name, nested=True):
-        logger.info("Hyperparameter optimsation with Optuna")
-        study = optuna.create_study(direction="minimize", study_name="wave-height-optimisation")
+    mlflow.set_tracking_uri("http://localhost:5000")
+    experiment_id = MLFlowHelper.get_or_create_experiment(experiment_name="pz_predict_lev")
+    run_name = f"pz_predict_lev_run_{active_model}"
 
-        # Create a partial function with the data pre-filled
-        objective_with_data = partial(
-            create_objective(X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test, params=params)
-        )
+    with mlflow.start_run(experiment_id=experiment_id, run_name=run_name) as parent_run:
+        parent_run_id = parent_run.info.run_id
+    mlflow.end_run()
 
-        study.optimize(objective_with_data, n_trials=n_trials, callbacks=[champion_callback], show_progress_bar=True)
+    logger.info("Hyperparameter optimsation with Optuna")
+    study = optuna.create_study(direction="minimize", study_name="wave-height-optimisation")
+    # Create function with the data pre-filled
+    objective_with_data = create_objective(
+        X_train=X_train,
+        y_train=y_train,
+        X_test=X_test,
+        y_test=y_test,
+        params=params,
+        parent_run_id=parent_run_id,
+    )
+    study.optimize(objective_with_data, n_trials=n_trials, callbacks=[champion_callback], show_progress_bar=True)
 
+    with mlflow.start_run(run_id=parent_run_id):
         mlflow.log_params(study.best_params)
         mlflow.log_metric("best_mae", study.best_value)
 
@@ -128,13 +174,13 @@ def train_with_optuna_rf(
             tags={
                 "project": "PZ from Lev Wave Buoy Project",
                 "optimizer_engine": "optuna",
-                "model_family": "RandomForest",
+                "model_family": active_model,
                 "feature_set_version": 1,
             }
         )
 
         # Fit the model with best params before logging
-        model = RandomForestRegressor(**study.best_params, n_jobs=-1)
+        model = create_model(active_model=active_model, model_params=study.best_params, random_state=random_state)
         model.fit(X_train, y_train)
 
         logger.info("Evaluating model")
@@ -146,7 +192,7 @@ def train_with_optuna_rf(
         test_r2 = r2_score(y_test, y_pred_test)
         mlflow.log_metrics({"train_mae": train_mae, "test_mae": test_mae, "train_r2": train_r2, "test_r2": test_r2})
 
-        model_name = "model-pz-to-lev"
+        model_name = f"model-pz-to-lev-{active_model}"
         mlflow.sklearn.log_model(
             sk_model=model,
             name=model_name,
@@ -156,9 +202,11 @@ def train_with_optuna_rf(
         )
 
         # Visualisation
-        feature_importance = pd.DataFrame(
-            {"feature": X_train.columns, "importance": model.feature_importances_}
-        ).sort_values("importance", ascending=False)
+        feature_importance = None
+        if hasattr(model, "feature_importances_"):
+            feature_importance = pd.DataFrame(
+                {"feature": X_train.columns, "importance": model.feature_importances_}
+            ).sort_values("importance", ascending=False)
         y_pred = model.predict(X_test)
         fig = evaluation_plots(
             y_test=y_test,
@@ -184,6 +232,13 @@ def train_with_optuna_rf(
 
         logger.info("Model registered as '%s' version %s", model_name, latest_version)
         logger.info("Promoted to 'Production' stage.")
+
+        # Check nested runs exist and log them
+        current_run = mlflow.active_run()
+        nested_runs = client.search_runs(
+            experiment_ids=[experiment_id], filter_string=f"tags.mlflow.parentRunId = '{current_run.info.run_id}'"
+        )
+        logger.debug("Found %s nested runs", len(nested_runs))
 
         # Also save locally as backup
         local_model_output = PROJECT_ROOT_DIR / "models"

@@ -9,7 +9,7 @@ from marine_ml.constants import DataColumns
 
 
 def evaluation_plots(
-    *, y_test: pd.Series, y_pred: pd.Series, test_r2: float, feature_importance: pd.DataFrame, show: bool = False
+    *, y_test: pd.Series, y_pred: pd.Series, test_r2: float, feature_importance: pd.DataFrame | None, show: bool = False
 ) -> plt.Figure:
     """Subplots of evaluation metrics."""
     fig, axes = plt.subplots(2, 2, figsize=(12, 12))
@@ -32,13 +32,21 @@ def evaluation_plots(
     axes[0, 1].set_title("Residual Plot")
     axes[0, 1].grid(visible=True, alpha=0.3)
 
-    # 3. Feature importance bar plot
-    axes[1, 0].barh(
-        feature_importance["feature"], feature_importance["importance"], alpha=0.7, edgecolor="black", color="steelblue"
-    )
-    axes[1, 0].set_xlabel("Importance")
-    axes[1, 0].set_title("Feature Importance")
-    axes[1, 0].grid(visible=True, alpha=0.3, axis="x")
+    # 3. Feature importance bar plot (handle model that do not surface feature importance)
+    fi_title = "Feature Importance"
+    if feature_importance is not None:
+        axes[1, 0].barh(
+            feature_importance["feature"],
+            feature_importance["importance"],
+            alpha=0.7,
+            edgecolor="black",
+            color="steelblue",
+        )
+        axes[1, 0].set_xlabel("Importance")
+        axes[1, 0].grid(visible=True, alpha=0.3, axis="x")
+    else:
+        fi_title += " - Unavailable for model"
+    axes[1, 0].set_title(fi_title)
 
     # 4. Residuals distribution
     axes[1, 1].hist(residuals, bins=30, alpha=0.7, edgecolor="black", color="steelblue")
