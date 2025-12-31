@@ -149,11 +149,12 @@ def train_with_optuna(  # noqa: PLR0915
     experiment_id = MLFlowHelper.get_or_create_experiment(experiment_name="pz_predict_lev")
     run_name = f"pz_predict_lev_run_{active_model}"
 
+    # Create the run to get the parent_run_id (used to log the optuna trials as nested runs)
     with mlflow.start_run(experiment_id=experiment_id, run_name=run_name) as parent_run:
         parent_run_id = parent_run.info.run_id
     mlflow.end_run()
 
-    logger.info("Hyperparameter optimsation with Optuna")
+    logger.info("Hyperparameter optimisation with Optuna")
     study = optuna.create_study(direction="minimize", study_name="wave-height-optimisation")
     # Create function with the data pre-filled
     objective_with_data = create_objective(
@@ -162,7 +163,7 @@ def train_with_optuna(  # noqa: PLR0915
         X_test=X_test,
         y_test=y_test,
         params=params,
-        parent_run_id=parent_run_id,
+        parent_run_id=parent_run_id,  # pass the parent_run_id so the optuna trials are logged as nested runs
     )
     study.optimize(objective_with_data, n_trials=n_trials, callbacks=[champion_callback], show_progress_bar=True)
 
@@ -192,13 +193,14 @@ def train_with_optuna(  # noqa: PLR0915
         test_r2 = r2_score(y_test, y_pred_test)
         mlflow.log_metrics({"train_mae": train_mae, "test_mae": test_mae, "train_r2": train_r2, "test_r2": test_r2})
 
+        # Log the model
         model_name = f"model-pz-to-lev-{active_model}"
         mlflow.sklearn.log_model(
             sk_model=model,
             name=model_name,
-            metadata={"model_data_version": 1},
+            metadata={"model_data_version": 1},  # Keeps data versioning alongside models
             registered_model_name=model_name,
-            signature=infer_signature(X_train, y_train),
+            signature=infer_signature(X_train, y_train),  # Automatically validates input/output schema
         )
 
         # Visualisation
@@ -219,7 +221,7 @@ def train_with_optuna(  # noqa: PLR0915
 
         # Get the run and register model to "Production" stage
         client = mlflow.tracking.MlflowClient()
-        # Find the latest model version
+        # Find the latest model version (MLflow increments version numbers automatically)
         model_versions = client.search_model_versions(f"name='{model_name}'")
         latest_version = str(max([int(mv.version) for mv in model_versions]))
         # Transition to Production stage

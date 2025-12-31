@@ -82,10 +82,10 @@ uv run python src/marine_ml/serve.py
 
 You may trial the available endpoints in the interactive API documentation at http://localhost:8000/docs :
 
-- GET /health - Service health check
-- GET /features - List required input features
-- POST /predict - Make wave height predictions
-- POST /reload - Reload model from registry (zero-downtime updates)
+- GET `/health` - Service health check
+- GET `/features` - List required input features
+- POST `/predict` - Make wave height predictions
+- POST `/reload` - Reload model from registry (zero-downtime updates)
 
 Finally, stop the mlflow service using `pkill -f 'mlflow'`.
 
@@ -135,3 +135,23 @@ Run the test suite using `uv run poe test`.
 - **scikit-learn** - Model training
 - **pytest** - Testing
 - **uv** - Dependency management
+
+## Deployment Considerations
+
+The current architecture is designed for local development and demonstration.
+This local setup works well for development and small-scale production.
+The architecture scales naturally to cloud platforms when needed, with the same code and MLflow interfaces.
+The table below contrasts the local architecture with a production-ready Azure deployment:
+
+| Component | Current (Local)            | Production (Azure)           |
+|-----------|----------------------------|------------------------------|
+| **Experiment Tracking** | Local MLflow tracking      | Azure Machine Learning with MLflow |
+| **Model Registry** | File-based MLflow registry | Azure ML Model Registry      |
+| **API Serving** | Single-instance FastAPI    | Azure App Service            |
+| **Data Storage** | Local files                | Azure Blob Storage           |
+| **Monitoring** | Basic logging              | Azure Monitor                |
+| **Retraining** | Manual                     | Automated on data drift detection |
+| **Scalability** | Single machine             | Auto-scaling containers      |
+
+The cloud infrastructure also addresses some current limitations by enabling distributed training for large datasets,
+monitoring, and automated model promotion to production.
