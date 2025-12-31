@@ -18,7 +18,7 @@ from sklearn.metrics import mean_absolute_error, r2_score
 
 from marine_ml.constants import PROJECT_ROOT_DIR
 from marine_ml.helpers.mlflow_helper import MLFlowHelper
-from marine_ml.plots import evaluation_plots
+from marine_ml.plots.model_evalution import evaluation_plots
 from marine_ml.utils import load_params
 
 optuna.logging.set_verbosity(optuna.logging.ERROR)  # override Optuna's default logging to reduce verbosity

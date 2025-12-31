@@ -128,7 +128,7 @@ def test_complete_pipeline(api_client: TestClient) -> None:
     prediction_data = response.json()
     assert "predicted_wave_height" in prediction_data
     assert isinstance(prediction_data["predicted_wave_height"], (int, float))
-    expected_min = 2.8
+    expected_min = 3.0
     expected_max = 3.2
     assert prediction_data["predicted_wave_height"] > expected_min
     assert prediction_data["predicted_wave_height"] < expected_max

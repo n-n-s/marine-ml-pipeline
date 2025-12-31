@@ -24,7 +24,12 @@ dev = [
 ]
 
 [project.optional-dependencies]
-exploration = ["windrose>=1.9.2", "jupyterlab>=4.5.1"]
+exploration = [
+    "windrose>=1.9.2",
+    "jupyterlab>=4.5.1",
+    "cartopy>=0.25.0",
+    "ipywidgets>=8.1.8",
+]
 
 all = ["exploration"]
 
