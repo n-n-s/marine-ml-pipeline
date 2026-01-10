@@ -2,6 +2,9 @@
 Machine learning pipeline for predicting wave height at coastal monitoring locations.
 Demonstrates end-to-end MLOps practices.
 
+> [!NOTE]
+> This project is designed as a demonstration of ML engineering concepts and practices for portfolio/knowledge sharing purposes. While it implements core functionality including data processing, model training, and inference workflows, certain production-grade aspects (such as authentication, comprehensive logging, monitoring, and security) have been intentionally simplified or omitted to maintain focus on the ML pipeline architecture. For a production deployment, these components would need to be implemented based on specific organisational requirements and scale considerations.
+
 [![Test](https://github.com/n-n-s/marine-ml-pipeline/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/n-n-s/marine-ml-pipeline/actions/workflows/ci.yaml)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
